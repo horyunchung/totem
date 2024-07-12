@@ -1,23 +1,31 @@
 #' iProjector
 #'
+#' Compute the I-projection given constraints in C and expected values in targets
 #'
+#' @param C a matrix with D constraints in the rows for |E| entities in the columns, must be of full row rank
+#' @param targets a matrix/vector of with D rows/entries with the expected values for the constraints in C
+#' @param v the reference distribution, defaults to the uniform distribution
+#' @param eps the tolerance
+#' @param maxIter the maximal number of iterations, defaults to 10 000
+#'
+#' @returns a list with following entries
 #'
 #' @export
-iProjector <- function(M, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L){
+iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L){
 
   ## check whether M is a matrix
-  if(!is.matrix(M)){
+  if(!is.matrix(C)){
     stop("M is not a matrix")
   }
   ## the number of entities
-  numberEntities <- ncol(M)
+  numberEntities <- ncol(C)
 
   ## coerce the targets into a column matrix
   targets <- matrix(targets, ncol = 1)
 
   ## check whether the number of targets is equal to the number of rows in M
-  if (nrow(targets) != nrow(M)){
-    stop("The number of targets does not match the number of rows in M: # rows provided by M = ", nrow(M), " and # targets = ", nrow(targets))
+  if (nrow(targets) != nrow(C)){
+    stop("The number of targets does not match the number of rows in C: # rows provided by C = ", nrow(C), " and # targets = ", nrow(targets))
   }
 
   ## reference distribution
@@ -31,7 +39,7 @@ iProjector <- function(M, targets, v = NULL, eps = .Machine$double.eps, maxIter 
   } else{
     #### check dimensions
     if (length(v) != numberEntities){
-      stop("The number of entities do not match: # provided by M = ", numberEntities, " and # provided by reference distribution = ", length(v))
+      stop("The number of entities do not match: # provided by C = ", numberEntities, " and # provided by reference distribution = ", length(v))
     }
     iProjection <- matrix(
       data = v,
@@ -39,22 +47,18 @@ iProjector <- function(M, targets, v = NULL, eps = .Machine$double.eps, maxIter 
     )
   }
 
-  ## precompute transpose of M
-  MT <- t(M)
+  ## precompute transpose of C
+  CT <- t(C)
 
   ## set the status
   converged = FALSE
   status = NULL
   error = NULL
   for (iter in seq_len(maxIter)){
-    #cat(iter, "\n")
-    ## calculate the Jacobian, note since R stores matrix in the
-    ## column major format, we multiply iProjection with
-    ## M transpose
     update <- tryCatch(
       {
-        inverseJacobian <- solve(M %*% (MT * iProjection[,1]))
-        MT %*% inverseJacobian %*% ((M %*% iProjection) - targets)
+        inverseJacobian <- solve(C %*% (CT * iProjection[,1]))
+        CT %*% inverseJacobian %*% ((C %*% iProjection) - targets)
 
       },
       error = function(e){
@@ -67,7 +71,7 @@ iProjector <- function(M, targets, v = NULL, eps = .Machine$double.eps, maxIter 
     }
     updatedProjection<- iProjection * exp(-update)
     if (isTRUE(all.equal(updatedProjection[,1], iProjection[,1], tolerance = eps))){
-      updatedtargets <- M %*% updatedProjection
+      updatedtargets <- C %*% updatedProjection
       if (isTRUE(all.equal(updatedtargets[,1], targets[,1]))){
         status <- "converged"
         converged <- TRUE
