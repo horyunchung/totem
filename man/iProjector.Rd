@@ -4,8 +4,22 @@
 \alias{iProjector}
 \title{iProjector}
 \usage{
-iProjector(M, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L)
+iProjector(C, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L)
+}
+\arguments{
+\item{C}{a matrix with D constraints in the rows for |E| entities in the columns, must be of full row rank}
+
+\item{targets}{a matrix/vector of with D rows/entries with the expected values for the constraints in C}
+
+\item{v}{the reference distribution, defaults to the uniform distribution}
+
+\item{eps}{the tolerance}
+
+\item{maxIter}{the maximal number of iterations, defaults to 10 000}
+}
+\value{
+a list with following entries
 }
 \description{
-iProjector
+Compute the I-projection given constraints in C and expected values in targets
 }

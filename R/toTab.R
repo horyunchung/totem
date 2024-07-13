@@ -5,9 +5,13 @@
 #' @import dplyr
 toTab <- function(df, select = NULL){
   tab <- if (is.null(select)){
-    data %>% count(!!!syms(colnames(data)), name = "Freq")
+    df %>% count(!!!syms(colnames(df)), name = "Freq")
   } else{
-    data %>% count(!!!syms(select), name = "Freq")
+    if (all(select %in% colnames(df))){
+      df %>% count(!!!syms(select), name = "Freq")
+    } else{
+      stop("selected colnames not found:", select[!select %in% colnames(df)])
+    }
   }
   tab$f <- tab$Freq / sum(tab$Freq)
   tab
