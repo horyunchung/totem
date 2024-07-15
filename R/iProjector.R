@@ -11,7 +11,7 @@
 #' @returns a list with following entries
 #'
 #' @export
-iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L){
+iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, maxIter = 10000L){
 
   ## check whether M is a matrix
   if(!is.matrix(C)){
@@ -22,6 +22,10 @@ iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter 
 
   ## coerce the targets into a column matrix
   targets <- matrix(targets, ncol = 1)
+
+  conv_tolerance <- tolerance
+
+  tolerance <- conv_tolerance * max(abs(C))
 
   ## check whether the number of targets is equal to the number of rows in M
   if (nrow(targets) != nrow(C)){
@@ -70,10 +74,14 @@ iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter 
       break
     }
     updatedProjection<- iProjection * exp(-update)
+<<<<<<< HEAD
 
     if (isTRUE(all.equal(updatedProjection[,1], iProjection[,1], tolerance = eps))){
+=======
+    if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
+>>>>>>> 4c9fbe14b5f128f4ae292c8172caea01c26216b2
       updatedtargets <- C %*% updatedProjection
-      if (isTRUE(all.equal(updatedtargets[,1], targets[,1]))){
+      if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
         status <- "converged"
         converged <- TRUE
         iProjection <- updatedProjection
