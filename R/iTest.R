@@ -111,7 +111,7 @@ i.test.numeric <-
 
   }
   p0 <- iProjector(C, targets, v = tab$f)
-  statistic = if (p0$coverged){
+  statistic = if (p0$converged){
     p1 <- iProjector(C, C %*% tab$f, v = p0$p)
     if (p1$converged){
       iDivergence(p1$p, p0$p)
@@ -144,6 +144,7 @@ i.test.numeric <-
   } else{
     0
   }
+  p.value
 }
 #' @export
 i.test.factor <- function(x, y = NULL){

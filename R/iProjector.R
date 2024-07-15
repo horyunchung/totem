@@ -70,7 +70,7 @@ iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter 
       break
     }
     updatedProjection<- iProjection * exp(-update)
-    cat(isTRUE(all.equal(updatedProjection[,1], iProjection[,1], tolerance = eps)), "\n")
+
     if (isTRUE(all.equal(updatedProjection[,1], iProjection[,1], tolerance = eps))){
       updatedtargets <- C %*% updatedProjection
       if (isTRUE(all.equal(updatedtargets[,1], targets[,1]))){
@@ -84,7 +84,6 @@ iProjector <- function(C, targets, v = NULL, eps = .Machine$double.eps, maxIter 
       break
     }
     iProjection <- updatedProjection
-    cat(iDivergence(iProjection, tab$f), "\n")
   }
 
   list(
