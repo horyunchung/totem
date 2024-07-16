@@ -9,7 +9,7 @@ i.test.character <- function(x, y = NULL, ...){
 #' @export
 i.test.numeric <-
   function(x, y = NULL, alternative = c("two.sided", "less", "greater"),
-           mu = 0, paired = FALSE, conf.level = 0.95)
+           mu = 0, paired = FALSE, conf.level = 0.95, tolerance = .Machine$double.eps)
 {
   alternative <- match.arg(alternative)
   ## check the conf.level: should be a single number between 0 and 1
@@ -125,53 +125,20 @@ i.test.numeric <-
     targets <- c(mus, groupF)
 
   }
-  p0 <- iProjector(C, targets, v = tab$f)
-  idiv = if (p0$converged){
-    p1 <- iProjector(C, C %*% tab$f, v = p0$p)
-    if (p1$converged){
-      iDivergence(p1$p, p0$p)
-    } else{
-      -2
-    }
-  } else{
-    -1
-  }
-  p.value <- if (idiv >= 0){
-    statistic <- 2 * sum(tab$Freq) * idiv
-    if (alternative == "two.sided"){
-      pchisq(statistic, df = dof, lower.tail = FALSE)
-    } else{
-      if (alternative == "greater"){
-        #hmm
-        if (C[1,] %*% tab$f > 0){
-          pchisq(statistic, df = dof, lower.tail = FALSE) / 2
-        } else{
-          0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
-        }
-      } else{
-        if (C[1,] %*% tab$f < 0){
-          pchisq(statistic, df = dof, lower.tail = FALSE) / 2
-        } else{
-          0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
-        }
-      }
-
-    }
-  } else{
-    statistic <- Inf
-    0
-  }
+  idiv <- computeStatistic(C, targets, tab, tolerance = tolerance)
+  N = sum(tab$Freq)
+  p.value <- computePvalue(idiv, N, dof, alternative)
   method <- paste(method, " of means")
   names(mu) <- if (nGroups < 3 || length(mu) == 1)
     if(paired || !is.null(y)) "difference in means" else "mean"
   else
     paste("difference in means", levels(tab$group)[1], "and", levels(tab$group)[-1])
-  names(statistic) <- "i"
+
 
   rval <- list(
-    statistic = statistic,
-    parameter = c(N = sum(tab$Freq), iDivergence = idiv, df = dof),
-    p.value = p.value,
+    statistic = p.value$statistic,
+    parameter = c(N = sum(tab$Freq), iDivergence = if (idiv >= 0) idiv else NA, df = dof),
+    p.value = p.value$p.value,
     estimate = estimate,
     null.value = mu,
     alternative = alternative,
@@ -183,8 +150,9 @@ i.test.numeric <-
 }
 #' @export
 i.test.factor <-
-  function(x, group, alternative = c("two.sided", "less", "greater"),
-           mu = 0, fix.margins = c("group", "both", "none"), conf.level = 0.95){
+  function(x, y, alternative = c("two.sided", "less", "greater"),
+           mu = 0, fix.margins = c("group", "both", "none"), conf.level = 0.95,
+           tolerance = .Machine$double.eps){
     alternative <- match.arg(alternative)
     fix.margins <- match.arg(fix.margins)
     ## check the conf.level: should be a single number between 0 and 1
@@ -194,35 +162,31 @@ i.test.factor <-
       stop("'conf.level' must be a single number between 0 and 1")
     if(!missing(mu) && any(is.na(mu)))
       stop("'mu' must be a (vector) of numbers")
-    if (class(group) == "character"){
-      group <- as.factor(group)
+    dname <- paste(deparse(substitute(x)), "and", deparse(substitute(y)))
+    if (class(y) == "character"){
+      y <- factor(y)
     }
 
-    if (length(x) != length(group))
+    if (length(x) != length(y))
       stop("length of 'x' should match length of 'group'")
     if (nlevels(x) < 2)
       stop("there should be at least two levels for the outcome 'x'")
-    if (nlevels(group) < 2)
+    if (nlevels(y) < 2)
       stop("there should be at least two groups")
 
-    dname <-
-    xok <- groupok <- complete.cases(x,group)
+
+    xok <- yok <- complete.cases(x,y)
 
     data <- data.frame(
       x = x[xok],
-      group= group[groupok]
+      group= y[yok]
     )
 
     tab <- toTab(data)
 
-    ## fix nothing,
-    ## Pearson's chisquared test
-
-    #cat(fix.margins, "\n")
-
     ## fix the prevalence of the groups
     ## Barnard's test
-    dof <- nlevels(group) - 1
+    dof <- (nlevels(tab$group) - 1) * (nlevels(tab$x) - 1)
     if (fix.margins == "group"){
       groupF <- tapply(tab$f, tab$group, sum)
       C <- rbind(
@@ -264,7 +228,8 @@ i.test.factor <-
           )
         )
       )
-      targets <- c(rep(0, nlevels(group) - 1), groupF)
+      targets <- c(rep(0, nlevels(tab$group) - 1), groupF)
+      p0 <- NULL
     } else if(fix.margins == "both"){
       ## fix the prevalence of the groups
       ## and the x
@@ -311,58 +276,28 @@ i.test.factor <-
         ),
         ifelse(tab$x == levels(tab$x)[1], 1, 0)
       )
-      targets <- c(rep(0, nlevels(group) - 1), groupF, xF[1])
+      targets <- c(rep(0, nlevels(tab$group) - 1), groupF, xF[1])
 
+      f1 <- tapply(tab$f, tab$x, sum)
+      f2 <- tapply(tab$f, tab$group, sum)
+
+      p0 <- list(
+        p = f1[tab$x] * f2[tab$group],
+        converged = TRUE
+      )
     }
 
-    p0 <- iProjector(C, targets, v = tab$f)
-    cat(p0$p, "\n")
-    cat(C %*% p0$p, "\n")
-    cat(C %*% tab$f, "\n")
-    print(tab)
-    idiv = if (p0$converged){
-      p1 <- iProjector(C, C %*% tab$f, v = p0$p)
-      if (p1$converged){
-        iDivergence(p1$p, p0$p)
-      } else{
-        -2
-      }
-    } else{
-      -1
-    }
-    p.value <- if (idiv >= 0){
-      statistic <- 2 * sum(tab$Freq) * idiv
-      if (alternative == "two.sided"){
-        pchisq(statistic, df = dof, lower.tail = FALSE)
-      } else{
-        if (alternative == "greater"){
-          #hmm
-          if (C[1,] %*% tab$f > 0){
-            pchisq(statistic, df = dof, lower.tail = FALSE) / 2
-          } else{
-            0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
-          }
-        } else{
-          if (C[1,] %*% tab$f < 0){
-            pchisq(statistic, df = dof, lower.tail = FALSE) / 2
-          } else{
-            0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
-          }
-        }
-
-      }
-    } else{
-      statistic <- Inf
-      0
-    }
+    idiv <- computeStatistic(C, targets, tab, p0, tolerance = tolerance)
+    N = sum(tab$Freq)
+    p.value <- computePvalue(idiv, N, dof, alternative)
     estimate <- with(subset(tab, subset = tab$x == levels(tab$x)[1]), tapply(f, group, sum)) / tapply(tab$f, tab$group, sum)
     names(mu) = paste0("difference in p(X='", levels(tab$x)[1], "'|group)")
     method = "i-test"
-    names(statistic) <- "i"
+
     rval <- list(
-      statistic = statistic,
-      parameter = c(N = sum(tab$Freq), iDivergence = idiv, df = dof),
-      p.value = p.value,
+      statistic = p.value$statistic,
+      parameter = c(N = N, iDivergence = idiv, df = dof),
+      p.value = p.value$p.value,
       estimate = estimate,
       null.value = mu,
       alternative = alternative,
@@ -389,3 +324,59 @@ i.test.formula <- function(formula, data, ...){
 ## 5. x = factro, y = factor two+ sample fisher's exact test
 ## 6. x = numeric, y = numeric, model test
 
+
+
+computeStatistic <- function(C, targets, tab, p0 = NULL, tolerance = .Machine$double.eps){
+  if (is.null(p0))
+    p0 <- iProjector(C, targets, v = tab$f)
+
+  if (p0$converged){
+    mask <- which(p0$p >= tolerance)
+
+    p1 <- iProjector(C[, mask], C %*% tab$f, v = p0$p[mask])
+    if (p1$converged){
+      iDivergence(p1$p, p0$p)
+    } else{
+      warning("could not project back to the data")
+      -2
+    }
+  } else{
+    warning("the hypothesis is inconsistent with the data")
+    -1
+  }
+}
+
+computePvalue <- function(idiv, N, dof, alternative){
+  p.value <- if (idiv >= 0){
+    statistic <- 2 * N * idiv
+    if (alternative == "two.sided"){
+      pchisq(statistic, df = dof, lower.tail = FALSE)
+    } else{
+      if (alternative == "greater"){
+        #hmm
+        if (C[1,] %*% tab$f > 0){
+          pchisq(statistic, df = dof, lower.tail = FALSE) / 2
+        } else{
+          0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
+        }
+      } else{
+        if (C[1,] %*% tab$f < 0){
+          pchisq(statistic, df = dof, lower.tail = FALSE) / 2
+        } else{
+          0.5 + pchisq(statistic, df = dof, lower.tail = TRUE) / 2
+        }
+      }
+
+    }
+  } else if (idiv == -2){
+    statistic <- Inf
+    0
+  } else if (idiv == -1){
+    statistic <- NA
+    NA
+  }
+  names(statistic) = "i"
+  list(
+    p.value = p.value, statistic = statistic
+  )
+}
