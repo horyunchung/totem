@@ -332,7 +332,9 @@ computeStatistic <- function(C, targets, tab, p0 = NULL, tolerance = .Machine$do
 
   if (p0$converged){
     mask <- which(p0$p >= tolerance)
-
+    if (length(mask) != ncol(C)){
+      warning("the probability of some entities was set to zero")
+    }
     p1 <- iProjector(C[, mask], C %*% tab$f, v = p0$p[mask])
     if (p1$converged){
       iDivergence(p1$p, p0$p)
