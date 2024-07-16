@@ -126,11 +126,7 @@ i.test.numeric <-
 
   }
   p0 <- iProjector(C, targets, v = tab$f)
-<<<<<<< HEAD
-  statistic = if (p0$converged){
-=======
   idiv = if (p0$converged){
->>>>>>> 4c9fbe14b5f128f4ae292c8172caea01c26216b2
     p1 <- iProjector(C, C %*% tab$f, v = p0$p)
     if (p1$converged){
       iDivergence(p1$p, p0$p)
@@ -165,9 +161,6 @@ i.test.numeric <-
     statistic <- Inf
     0
   }
-<<<<<<< HEAD
-  p.value
-=======
   method <- paste(method, " of means")
   names(mu) <- if (nGroups < 3 || length(mu) == 1)
     if(paired || !is.null(y)) "difference in means" else "mean"
@@ -187,12 +180,11 @@ i.test.numeric <-
   )
   class(rval) <- "htest"
   return(rval)
->>>>>>> 4c9fbe14b5f128f4ae292c8172caea01c26216b2
 }
 #' @export
 i.test.factor <-
   function(x, group, alternative = c("two.sided", "less", "greater"),
-           p = 0.5, fix.margins = c("group", "both", "none"), conf.level = 0.95){
+           mu = 0, fix.margins = c("group", "both", "none"), conf.level = 0.95){
     alternative <- match.arg(alternative)
     fix.margins <- match.arg(fix.margins)
     ## check the conf.level: should be a single number between 0 and 1
@@ -200,19 +192,20 @@ i.test.factor <-
        (length(conf.level) != 1 || !is.finite(conf.level) ||
         conf.level < 0 || conf.level > 1))
       stop("'conf.level' must be a single number between 0 and 1")
-    if(!missing(p) && any(is.na(p)))
-      stop("'p' must be a (vector) of numbers")
+    if(!missing(mu) && any(is.na(mu)))
+      stop("'mu' must be a (vector) of numbers")
     if (class(group) == "character"){
       group <- as.factor(group)
     }
 
     if (length(x) != length(group))
       stop("length of 'x' should match length of 'group'")
-    if (nlevels(x) != 2)
-      stop("there should be only two levels for the outcome 'x'")
+    if (nlevels(x) < 2)
+      stop("there should be at least two levels for the outcome 'x'")
     if (nlevels(group) < 2)
       stop("there should be at least two groups")
 
+    dname <-
     xok <- groupok <- complete.cases(x,group)
 
     data <- data.frame(
@@ -225,7 +218,7 @@ i.test.factor <-
     ## fix nothing,
     ## Pearson's chisquared test
 
-    cat(fix.margins, "\n")
+    #cat(fix.margins, "\n")
 
     ## fix the prevalence of the groups
     ## Barnard's test
@@ -323,8 +316,10 @@ i.test.factor <-
     }
 
     p0 <- iProjector(C, targets, v = tab$f)
+    cat(p0$p, "\n")
     cat(C %*% p0$p, "\n")
     cat(C %*% tab$f, "\n")
+    print(tab)
     idiv = if (p0$converged){
       p1 <- iProjector(C, C %*% tab$f, v = p0$p)
       if (p1$converged){
@@ -360,7 +355,23 @@ i.test.factor <-
       statistic <- Inf
       0
     }
-    p.value
+    estimate <- with(subset(tab, subset = tab$x == levels(tab$x)[1]), tapply(f, group, sum)) / tapply(tab$f, tab$group, sum)
+    names(mu) = paste0("difference in p(X='", levels(tab$x)[1], "'|group)")
+    method = "i-test"
+    names(statistic) <- "i"
+    rval <- list(
+      statistic = statistic,
+      parameter = c(N = sum(tab$Freq), iDivergence = idiv, df = dof),
+      p.value = p.value,
+      estimate = estimate,
+      null.value = mu,
+      alternative = alternative,
+      method = method,
+      data.name = dname
+    )
+    class(rval) <- "htest"
+    return(rval)
+
 
 
 

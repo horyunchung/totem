@@ -74,12 +74,7 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
       break
     }
     updatedProjection<- iProjection * exp(-update)
-<<<<<<< HEAD
-
-    if (isTRUE(all.equal(updatedProjection[,1], iProjection[,1], tolerance = eps))){
-=======
     if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
->>>>>>> 4c9fbe14b5f128f4ae292c8172caea01c26216b2
       updatedtargets <- C %*% updatedProjection
       if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
         status <- "converged"
