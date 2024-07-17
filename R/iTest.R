@@ -314,6 +314,38 @@ i.test.factor <-
 
 #' @export
 i.test.formula <- function(formula, data, ...){
+  ## canonicalize the arguments
+  formula <- as.formula(formula)
+
+  if(!is.list(data) && !is.environment(data))
+    stop("'data' must be a list or an environment")
+
+  mf <- cl <- match.call()		# for creating the model frame
+  varNames <- all.vars(formula)
+  ## left hand side is the response
+  ## right hand side is the model
+  ## we should have no parameters
+  form2 <- formula; form2[[2L]] <- 0
+  varNamesRHS <- all.vars(form2)
+
+  env <- environment(formula)
+  if (is.null(env)) env <- parent.frame()
+
+  ## all names in formula should represent actual
+  ## variables
+  ## This aux.function needs to be as complicated because
+  ## exists(var, data) does not work (with lists or dataframes):
+  lenVar <- function(var) tryCatch(length(eval(as.name(var), data, env)),
+                                   error = function(e) -1L)
+  if (length(varNames)){
+    n <- vapply(varNames, lenVar, 0)
+    if(any(not.there <- n == -1L)) {
+      stop("")
+    }
+  }
+
+
+
 
 }
 ## want to implement the generic i-test

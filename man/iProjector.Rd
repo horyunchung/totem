@@ -4,7 +4,13 @@
 \alias{iProjector}
 \title{iProjector}
 \usage{
-iProjector(C, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L)
+iProjector(
+  C,
+  targets,
+  v = NULL,
+  tolerance = .Machine$double.eps,
+  maxIter = 10000L
+)
 }
 \arguments{
 \item{C}{a matrix with D constraints in the rows for |E| entities in the columns, must be of full row rank}
@@ -13,9 +19,9 @@ iProjector(C, targets, v = NULL, eps = .Machine$double.eps, maxIter = 10000L)
 
 \item{v}{the reference distribution, defaults to the uniform distribution}
 
-\item{eps}{the tolerance}
-
 \item{maxIter}{the maximal number of iterations, defaults to 10 000}
+
+\item{eps}{the tolerance}
 }
 \value{
 a list with following entries
