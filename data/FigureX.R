@@ -70,7 +70,7 @@ lower = uniroot(rootF, interval = c(0.74, opt$minimum), tol = .Machine$double.ep
 upper = uniroot(rootF, interval = c(opt$minimum, 0.8), tol = .Machine$double.eps)
 
 
-
+## todo: nls, ols, pgls analysis
 
 plot(BMR ~ Mass, data = data, log = 'xy')
 
