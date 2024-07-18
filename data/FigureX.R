@@ -120,9 +120,9 @@ sensitivityAnalysis <- sapply(
     )
   }
 )
-image(kPrimes, fs, sensitivityAnalysis)
+image(kPrimes, fs, sensitivityAnalysis, useRaster = TRUE)
 contour(kPrimes, fs, sensitivityAnalysis, levels = 0.05, add =TRUE)
-
+points(0.1, 0.21, pch = 3, col = "black")
 ## todo: nls, ols, pgls analysis
 
 plot(BMR ~ Mass, data = data, log = 'xy')
