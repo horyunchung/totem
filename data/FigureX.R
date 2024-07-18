@@ -1,17 +1,32 @@
 library(readxl)
 library(caper)
-tree <- read.nexus("data/mammalia.nexus")
-data <- read_xlsx("data/brv12350-sup-0003-tables2.xlsx", skip = 2)
 
+# Prepare data
+## load the nexus tree
+tree <- read.nexus("data/mammalia.nexus")
+## load the data
+data <- read_xlsx("data/brv12350-sup-0003-tables2.xlsx", skip = 2)
+## only the SELECT subset
 data <- subset(data, subset = SELECT == 1, select = c("Species Nexus", "BMR", "body mass"))
 
-colnames(data) <- c("Species nexus", "BMR", "Mass")
+## set the column names
+colnames(data) <- c("Species", "BMR", "Mass")
 
+## reformat the species names to match the species names in the nexus file
+## (substitute ` ` with `_` between genus and species)
+data$Species <- data$Species
+data$Species <- gsub("\\s", "\\_", data$Species)
+
+## recast to numerical values
 data$BMR <- as.numeric(data$BMR)
 data$Mass <- as.numeric(data$Mass)
 
 
-tab <- toTab(data)
+# TOTEM analysis of theories
+
+## empirical entity distribution for the attributes
+## BMR and Mass
+tab <- toTab(subset(data, select = c("BMR", "Mass")))
 
 ## test pure allowmetric laws with fixed exponents
 testAllometric <- function(b){
@@ -42,11 +57,29 @@ testAllometric <- function(b){
   ## return result
   list(iDivergence = idiv, p.value, A0 = A0 , p0 = p0$p)
 }
-## test b = 2/3
-allometricTwoThird = testAllometric(2/3)
+### test b = 2/3
+allometricTwoThird <- testAllometric(2/3)
 
-## test b = 3/4
-allometricThreeFourth = testAllometric(3/4)
+### test b = 3/4
+allometricThreeFourth <- testAllometric(3/4)
+
+### calculate 95% CI
+optF <- function(b){
+  res <- testAllometric(b)
+  res$iDivergence
+}
+
+rootF <- function(b){
+  res <- testAllometric(b)
+  res$iDivergence - qchisq(0.95, 1, lower.tail = FALSE)
+}
+opt = optimize(optF, interval = c(0.74, 0.8), tol = .Machine$double.eps)
+lower = uniroot(rootF, interval = c(0.74, opt$minimum), tol = .Machine$double.eps)
+upper = uniroot(rootF, interval = c(opt$minimum, 0.8), tol = .Machine$double.eps)
+
+
+
+
 
 ## test the thermodynamic model
 testThermodynamic <- function(kPrime = 0.1, f = 0.21){
@@ -69,22 +102,26 @@ testThermodynamic <- function(kPrime = 0.1, f = 0.21){
   list(iDivergence = idiv, p.value, K = sum(p0$p * (tab$BMR - (1 - f) * kPrime / 0.0201 * tab$Mass^(2/3)) / (f * tab$Mass)), p0 = p0$p)
 }
 
+thermodynamic <- testThermodynamic()
 
+### sensitivity analysis for kPrime and f?
 
-## calculate 95% CI
-optF <- function(b){
-  res <- testAllometric(b)
-  res$iDivergence
-}
+kPrimes <- seq(0.05, 0.15, by = 0.0005)
+fs <- seq(0.01, 0.42, by = 0.001)
 
-rootF <- function(b){
-  res <- testAllometric(b)
-  res$iDivergence - qchisq(0.95, 1, lower.tail = FALSE)
-}
-opt = optimize(optF, interval = c(0.74, 0.8), tol = .Machine$double.eps)
-lower = uniroot(rootF, interval = c(0.74, opt$minimum), tol = .Machine$double.eps)
-upper = uniroot(rootF, interval = c(opt$minimum, 0.8), tol = .Machine$double.eps)
-
+sensitivityAnalysis <- sapply(
+  fs,
+  function(f){
+    sapply(
+      kPrimes,
+      function(kPrime){
+        testThermodynamic(kPrime, f)[[2]]$p.value
+      }
+    )
+  }
+)
+image(kPrimes, fs, sensitivityAnalysis)
+contour(kPrimes, fs, sensitivityAnalysis, levels = 0.05, add =TRUE)
 
 ## todo: nls, ols, pgls analysis
 
@@ -103,3 +140,7 @@ myH = function(x){
 }
 curve(myG, add = TRUE, col = 2)
 curve(myH, add = TRUE, col = 3)
+dataSpeciesComperativeData <- comparative.data(data = dataSpecies, phy = tree, names.col = species)
+pglsAnalysis <- pgls(log10BMR ~ log10Mass, data = dataSpeciesComperativeData, lambda = "ML")
+pglsAnalysis0 <- pgls(log10BMR0 ~ 1, data = dataSpeciesComperativeData, lambda = pglsAnalysis$param["lambda"])
+`
