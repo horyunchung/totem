@@ -1,6 +1,6 @@
 library(readxl)
 library(caper)
-
+library(totem)
 # Prepare data
 ## load the nexus tree
 tree <- read.nexus("data/mammalia.nexus")
@@ -21,7 +21,7 @@ data$Species <- gsub("\\s", "\\_", data$Species)
 
 ## empirical entity distribution for the attributes
 ## BMR and Mass
-tab <- toTab(subset(data, select = c("BMR", "Mass")))
+tab <- toTab(subset(data, select = c("Species", "BMR", "Mass")))
 
 ## test pure allowmetric laws with fixed exponents
 testAllometric <- function(b){
@@ -218,31 +218,31 @@ results <- data.frame(
   H0.A = c(
     coefficients(nls0.66)["A"],
     coefficients(nls0.75)["A"],
-    NA,
-    NA,
-    NA,
-    NA,
+    10^coefficients(linm0.66)[1],
+    10^coefficients(linm0.75)[1],
+    10^coefficients(pglsAnalysis0.66)[1],
+    10^coefficients(pglsAnalysis0.75)[1],
     allometricTwoThird$A,
     allometricThreeFourth$A
   ),
   H0.logA = c(
-    NA,
-    NA,
+    log10(coefficients(nls0.66)["A"]),
+    log10(coefficients(nls0.75)["A"]),
     coefficients(linm0.66)[1],
     coefficients(linm0.75)[1],
     coefficients(pglsAnalysis0.66)[1],
     coefficients(pglsAnalysis0.75)[1],
-    NA,
-    NA
+    log10(allometricTwoThird$A),
+    log10(allometricThreeFourth$A)
   ),
   H0.b = rep(c("2/3", "3/4"), 4),
   H0.bias = c(
     mean(residuals(nls0.66)),
     mean(residuals(nls0.75)),
-    mean(residuals(linm0.66)),
-    mean(residuals(linm0.75)),
-    mean(residuals0.66),
-    mean(residuals0.75),
+    mean(data$BMR - 10^(fitted(linm0.66))),
+    mean(data$BMR - 10^(fitted(linm0.75))),
+    mean(data$BMR - 10^(fitted(pglsAnalysis0.66))),
+    mean(data$BMR - 10^(fitted(pglsAnalysis0.75))),
     sum(allometricThreeFourth$p0 * (tab$BMR - tab$BMR / tab$Mass^0.75 * sum(allometricThreeFourth$p0 * tab$Mass^0.75))),
     sum(allometricTwoThird$p0 * (tab$BMR - tab$BMR / tab$Mass^(2/3) * sum(allometricTwoThird$p0 * tab$Mass^(2/3))))
   ),
@@ -257,7 +257,7 @@ results <- data.frame(
     NA
   ),
   H1.A = rep(
-    c(coefficients(nls1)["A"], NA, NA, NA), each = 2
+    c(coefficients(nls1)["A"], 10^coefficients(linm1)[1], 10^coefficients(pglsAnalysis1)[1], NA), each = 2
   ),
   H1.logA = rep(
     c(NA, coefficients(linm1)[1], coefficients(pglsAnalysis1)[1], NA), each = 2
@@ -268,8 +268,8 @@ results <- data.frame(
   H1.bias = rep(
     c(
       mean(residuals(nls1)),
-      mean(residuals(linm1)),
-      mean(residuals1),
+      mean(data$BMR - 10^fitted(linm1)),
+      mean(data$BMR - 10^fitted(pglsAnalysis1)),
       NA),
     each = 2
   ),
