@@ -61,9 +61,11 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
   for (iter in seq_len(maxIter)){
     update <- tryCatch(
       {
-        inverseJacobian <- solve(C %*% (CT * iProjection[,1]))
-        CT %*% inverseJacobian %*% ((C %*% iProjection) - targets)
-
+        ## against numerical stability issues
+        QR <- qr(C %*% (CT * iProjection[,1]))
+        CT %*% solve.qr(QR, ((C %*% iProjection) - targets))
+        #inverseJacobian <- solve(C %*% (CT * iProjection[,1]))
+        #CT %*% inverseJacobian %*% ((C %*% iProjection) - targets)
       },
       error = function(e){
         e
@@ -74,20 +76,28 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
       break
     }
     updatedProjection<- iProjection * exp(-update)
-    if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
-      updatedtargets <- C %*% updatedProjection
-      if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
-        status <- "converged"
-        converged <- TRUE
-        iProjection <- updatedProjection
-      } else{
-        status <- "targets not fulfilled"
-        iProjection <- updatedProjection
+    if (all(is.finite(updatedProjection))){
+      if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
+        updatedtargets <- C %*% updatedProjection
+        if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
+          status <- "converged"
+          converged <- TRUE
+          iProjection <- updatedProjection
+          break
+        } else{
+          status <- "targets not fulfilled"
+          #iProjection <- updatedProjection
+        }
+
       }
+      iProjection <- updatedProjection
+    } else{
+      status <- "encountered non-finite values"
       break
     }
-    iProjection <- updatedProjection
+
   }
+
 
   list(
     p = iProjection[,1],
