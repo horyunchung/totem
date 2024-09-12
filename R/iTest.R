@@ -1,41 +1,309 @@
+#' i.test
+#'
+#' Performs a two way $I$-test.
+#'
 #' @export
 i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"),
-                   mu = 0, fix.rhs = FALSE, fix.lhs = FALSE
+                   mu = 0, fix = FALSE
                    )
 {
+  alternative <- match.arg(alternative)
+
   if(missing(formula)
      || (length(formula) != 3L)
-     || (length(attr(terms(formula[-2L]), "term.labels")) != 1L))
+     || (length(attr(terms(formula[-2L]), "term.labels")) > 1L))
     stop("'formula' missing or incorrect")
 
-  terms <- eval(attr(terms(BMR ~ g), "variables"), envir = data)
+  ## extract the attribute manifestations
+  dname <- paste(attr(attr(terms(formula), "factors"), "dimnames")[[1]], collapse = " by ")
+  yx <- eval(attr(terms(formula), "variables"), envir = data)
+  yx <- as.data.frame(yx, col.names = if (length(yx) == 2) c("y", "x") else "y")
+  ## retain only complete rows
+  yx = subset(yx, subset = complete.cases(yx))
 
-  y <- terms[[1L]]
-  x <- terms[[2L]]
+  ## convert to entities
+  entities <- toEntities(yx)
 
+  ## determine the attribute types
+  classY <- NULL
+  classX <- NULL
 
-  entities <- toTab(data.frame(y = y, x = x))
+  gY <- NULL
+  gX <- NULL
 
-  if(is.logical(fix.rhs)){
-    if (fix.rhs == TRUE){
-      fix.rhs = mean(x)
+  if (is.numeric(yx$y)){
+    classY <- "numeric"
+    gY <- entities$y
+  } else{
+    ## convert characters to factors
+    if (is.character(yx$y))
+      yx$y <- factor(yx$y)
+
+    if(is.factor(yx$y)){
+      if (nlevels(yx$y) != 2){
+        stop("categorical 'response' should have exactly two levels")
+      }
+      classY <- "factor"
+      gY <- ifelse(entities$y == levels(entities$y)[2], 1, 0)
+    } else{
+      stop("'response' is neither numeric nor categorical")
     }
-  } else if (!is.numeric(fix.rhs) || length(fix.rhs) != 1L){
-    stop("invalid value for fix.rhs")
+  }
+  class(yx$y) <- classY
+
+  oneSample <- NCOL(yx) == 1
+
+  if (oneSample == FALSE){
+    if(is.numeric(yx$x)){
+      classX <- "numeric"
+      gX <- entities$x
+    } else{
+      if (is.character(yx$x))
+        yx$x <- factor(yx$x)
+
+      if(is.factor(yx$x)){
+        if (nlevels(yx$x) != 2)
+          stop("catergorical 'predictors' should have exactly two levels")
+        classX <- "factor"
+        gX <- ifelse(entities$x == levels(entities$x)[2], 1, 0)
+      } else{
+        stop("'predictor' is neither numeric nor categorical")
+      }
+
+    }
+    class(yx$x) = classX
+    if(is.logical(fix)){
+      if (fix == TRUE){
+        if (classX == "factor"){
+          fix <- sum(entities$f * gX)
+        } else{
+          fix <- sum(entities$f * gY / gX)
+        }
+      }
+    } else if (!is.numeric(fix) || length(fix) != 1L){
+      stop("invalid value for fix")
+    }
   }
 
-  if(is.logical(fix.lhs)){
-    if (fix.lhs == TRUE){
-      fix.lhs = mean(y)
+
+  if(classY == "factor" && classX == "numeric")
+    stop("categorical 'response' with numeric 'predictor' is not supported")
+
+  ## so what do we do?
+  idiv <- NULL
+  estimate <- NULL
+  if (fix == FALSE && !oneSample){
+    suppressWarnings(
+      optH <- optimize(
+        function(muX){
+          i.test_internal(
+            entities = entities,
+            v = entities$empirical,
+            mu = mu,
+            classX = classX,
+            gY = gY, gX = gX,
+            oneSample = oneSample,
+            fix = muX
+          )$idiv
+        },
+        interval = if (classX == "factor") c(0, 1) else range(gY / gX),
+        tol = .Machine$double.eps
+      )
+    )
+    pH <- i.test_internal(
+      entities = entities,
+      v = entities$empirical,
+      mu = mu,
+      classX = classX,
+      gY = gY, gX = gX,
+      oneSample = FALSE,
+      fix = optH$minimum
+    )
+    estimate <- pH$estimate
+
+    if (is.finite(optH$objective)){
+      suppressWarnings(
+        optA <- optimize(
+          function(muX){
+            i.test_internal(
+              entities = entities,
+              v = pH$p$p,
+              mu = mu,
+              classX = classX,
+              gY = gY, gX = gX,
+              oneSample = FALSE,
+              fix = muX
+            )$idiv
+          },
+          interval = if (classX == "factor") c(0, 1) else range(gY / gX),
+          tol = .Machine$double.eps
+        ))
+      pA <- i.test_internal(
+        entities = entities,
+        v = pH$p$p,
+        mu = estimate,
+        classX = classX,
+        gY = gY, gX = gX,
+        oneSample = FALSE,
+        fix = optA$minimum
+      )
+      idiv <- pA$idiv
+    } else{
+      idiv <- NA
     }
-  } else if (!is.numeric(fix.lhs) || length(fix.lhs) != 1L){
-    stop("invalid value for fix.lhs")
+
+  } else{
+    ## hypothesis distribution
+    pH <- i.test_internal(
+      entities = entities,
+      v = entities$empirical,
+      mu = mu,
+      classX = classX,
+      gY = gY, gX = gX,
+      oneSample = oneSample,
+      fix = fix
+    )
+    estimate <- pH$estimate
+    if (is.finite(pH$idiv)){
+      pA <- i.test_internal(
+        entities = entities,
+        v = pH$p$p,
+        mu = estimate,
+        classX = classX,
+        gY = gY, gX = gX,
+        oneSample = oneSample,
+        fix = fix
+      )
+      idiv <- pA$idiv
+    } else{
+      idiv <- NA
+    }
+
+  }
+  N = attr(entities, "N")
+  statistic <- 2 * N * idiv
+  names(statistic) = "i"
+  names(mu) = if (oneSample){
+    "mean"
+  } else{
+    if (classY == "factor"){
+      "difference of rates"
+    } else{
+      if (classX == "factor"){
+        "difference of means"
+      } else{
+        "bias"
+      }
+    }
+  }
+  p.value <- if(alternative == "two.sided"){
+    pchisq(statistic, df = 1, lower.tail = FALSE)
+  } else if (alternative == "less"){
+    if (estimate < mu){
+      pchisq(statistic, df = 1, lower.tail = FALSE) / 2
+    } else{
+      0.5 + pchisq(statistic, df = 1, lower.tail = TRUE) / 2
+    }
+  } else{
+    if (estimate < mu){
+      pchisq(statistic, df = 1, lower.tail = FALSE) / 2
+    } else{
+      0.5 + pchisq(statistic, df = 1, lower.tail = TRUE) / 2
+    }
+  }
+
+  method <- if (oneSample){
+    if(classY == "factor"){
+      "One Sample I-test for a rate"
+    } else{
+      "One Sample I-test for a mean"
+    }
+  } else{
+    if (classY == "numeric" && classX == "numeric"){
+      "I-test for a two-factor relationship"
+    } else{
+      paste("Two Sample I-test for",
+          if (classY == "factor"){
+            "rates"
+          } else{
+            "means"
+          }
+
+      )
+    }
   }
 
 
 
-  list(y, x)
+  rval <- list(
+    statistic = statistic,
+    parameter = c(iDivergence = idiv),
+    p.value = p.value,
+    estimate = estimate,
+    null.value = mu,
+    alternative = alternative,
+    method = method,
+    data.name = dname,
+    sample.size = attr(entities, "N")
+  )
+  class(rval) <- "htest"
+  return(rval)
 
+}
+
+
+#' @export
+i.test_internal <- function(entities, v, mu, classX, gY, gX, oneSample, fix){
+
+  C <- NULL
+  targets <- NULL
+  estimate <- NULL
+  ## one sample test
+  if (oneSample){
+    C <- rbind(
+      gY,
+      1
+    )
+    estimate = sum(entities$empirical * gY)
+    names(estimate) = "mean Y"
+    targets <- c(mu, 1)
+  ## two samples
+  } else{
+    if (classX == "factor"){
+      C <- rbind(
+        ifelse(entities$x == levels(entities$x)[2], gY / fix, -gY / (1 - fix)),
+        gX,
+        1
+      )
+      marginal <- sum(entities$empirical * gX)
+      estimate <- sum(entities$empirical * ifelse(entities$x == levels(entities$x)[2], gY / marginal, -gY / (1 - marginal)))
+      names(estimate) = paste("difference", if (class(gY) == "numeric") "means" else "rates")
+      targets <- c(mu, fix, 1)
+    } else{
+      C <- rbind(
+        gY - fix * gX,
+        gY / gX,
+        1
+      )
+      marginal <- sum(entities$empirical * gY / gX)
+      estimate <- sum(entities$empirical * (gY - marginal * gX))
+      names(estimate) = "bias"
+      targets <- c(mu, fix, 1)
+    }
+
+  }
+
+  p <- iProjector(C, targets, v)
+  idiv <- if(p$converged){
+    iDivergence(p$p, v)
+  } else{
+    Inf
+  }
+  list(
+    p = p,
+    idiv = idiv,
+    estimate = estimate
+  )
 }
 
 #' @export
