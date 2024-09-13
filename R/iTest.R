@@ -20,20 +20,15 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
   yx <- as.data.frame(yx, col.names = if (length(yx) == 2) c("y", "x") else "y")
   ## retain only complete rows
   yx = subset(yx, subset = complete.cases(yx))
-
-  ## convert to entities
-  entities <- toEntities(yx)
+  if (is.character(yx$x))
+    yx$x <- factor(yx$x)
 
   ## determine the attribute types
   classY <- NULL
   classX <- NULL
 
-  gY <- NULL
-  gX <- NULL
-
   if (is.numeric(yx$y)){
     classY <- "numeric"
-    gY <- entities$y
   } else{
     ## convert characters to factors
     if (is.character(yx$y))
@@ -44,48 +39,57 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
         stop("categorical 'response' should have exactly two levels")
       }
       classY <- "factor"
-      gY <- ifelse(entities$y == levels(entities$y)[2], 1, 0)
     } else{
       stop("'response' is neither numeric nor categorical")
     }
   }
   class(yx$y) <- classY
 
+
   oneSample <- NCOL(yx) == 1
 
   if (oneSample == FALSE){
     if(is.numeric(yx$x)){
       classX <- "numeric"
-      gX <- entities$x
     } else{
-      if (is.character(yx$x))
-        yx$x <- factor(yx$x)
-
       if(is.factor(yx$x)){
         if (nlevels(yx$x) != 2)
           stop("catergorical 'predictors' should have exactly two levels")
         classX <- "factor"
-        gX <- ifelse(entities$x == levels(entities$x)[2], 1, 0)
       } else{
         stop("'predictor' is neither numeric nor categorical")
       }
 
     }
     class(yx$x) = classX
+  }
+  entities <- toEntities(yx)
+
+  gY <- if (classY == "numeric"){
+    entities$y
+  } else{
+    ifelse(entities$y == levels(entities$y)[2], 1, 0)
+  }
+  gX <- NULL
+  if (! oneSample){
+    gX <- if (classX == "numeric"){
+      entities$x
+    } else{
+      ifelse(entities$x == levels(entities$x)[2], 1, 0)
+    }
+
     if(is.logical(fix)){
       if (fix == TRUE){
-        if (classX == "factor"){
-          fix <- sum(entities$f * gX)
-        } else{
-          fix <- sum(entities$f * gY / gX)
-        }
+        fix <- sum(entities$empirical * gX)
+        cat("asd", fix, "\n")
       }
     } else if (!is.numeric(fix) || length(fix) != 1L){
       stop("invalid value for fix")
     }
   }
 
-
+  #print("YY: ", str(gY))
+  #print("XX: ", str(gX))
   if(classY == "factor" && classX == "numeric")
     stop("categorical 'response' with numeric 'predictor' is not supported")
 
@@ -93,67 +97,24 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
   idiv <- NULL
   estimate <- NULL
   if (fix == FALSE && !oneSample){
-    suppressWarnings(
-      optH <- optimize(
-        function(muX){
-          i.test_internal(
-            entities = entities,
-            v = entities$empirical,
-            mu = mu,
-            classX = classX,
-            gY = gY, gX = gX,
-            oneSample = oneSample,
-            fix = muX
-          )$idiv
-        },
-        interval = if (classX == "factor") c(0, 1) else range(gY / gX),
-        tol = .Machine$double.eps
-      )
-    )
-    pH <- i.test_internal(
-      entities = entities,
-      v = entities$empirical,
-      mu = mu,
-      classX = classX,
-      gY = gY, gX = gX,
-      oneSample = FALSE,
-      fix = optH$minimum
-    )
+    message("estimating marginal\n")
+    pH <- estimateMarginal(entities, entities$empirical, mu, classX, gY, gX, oneSample)
+
+    cat("estimated marginal:", pH$estimatedMarginal, "\n")
     estimate <- pH$estimate
 
-    if (is.finite(optH$objective)){
-      suppressWarnings(
-        optA <- optimize(
-          function(muX){
-            i.test_internal(
-              entities = entities,
-              v = pH$p$p,
-              mu = mu,
-              classX = classX,
-              gY = gY, gX = gX,
-              oneSample = FALSE,
-              fix = muX
-            )$idiv
-          },
-          interval = if (classX == "factor") c(0, 1) else range(gY / gX),
-          tol = .Machine$double.eps
-        ))
-      pA <- i.test_internal(
-        entities = entities,
-        v = pH$p$p,
-        mu = estimate,
-        classX = classX,
-        gY = gY, gX = gX,
-        oneSample = FALSE,
-        fix = optA$minimum
-      )
+    if (pH$p$converged == TRUE){
+      pA <- estimateMarginal(entities, pH$p$p, estimate, classX, gY, gX, oneSample)
+      cat("estimated marginal:", pA$estimatedMarginal, "\n")
       idiv <- pA$idiv
     } else{
       idiv <- NA
     }
 
   } else{
+    cat("fixing marginals\n")
     ## hypothesis distribution
+    cat("fixed marginal:", fix, "\n")
     pH <- i.test_internal(
       entities = entities,
       v = entities$empirical,
@@ -164,7 +125,7 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
       fix = fix
     )
     estimate <- pH$estimate
-    if (is.finite(pH$idiv)){
+    if (pH$p$converged == TRUE){
       pA <- i.test_internal(
         entities = entities,
         v = pH$p$p,
@@ -205,7 +166,7 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
       0.5 + pchisq(statistic, df = 1, lower.tail = TRUE) / 2
     }
   } else{
-    if (estimate < mu){
+    if (estimate > mu){
       pchisq(statistic, df = 1, lower.tail = FALSE) / 2
     } else{
       0.5 + pchisq(statistic, df = 1, lower.tail = TRUE) / 2
@@ -281,12 +242,12 @@ i.test_internal <- function(entities, v, mu, classX, gY, gX, oneSample, fix){
       targets <- c(mu, fix, 1)
     } else{
       C <- rbind(
-        gY - fix * gX,
-        gY / gX,
+        gY - gY/gX * fix,
+        gX,
         1
       )
-      marginal <- sum(entities$empirical * gY / gX)
-      estimate <- sum(entities$empirical * (gY - marginal * gX))
+      marginal <- sum(entities$empirical * gX)
+      estimate <- sum(entities$empirical * (gY - gY/gX * marginal))
       names(estimate) = "bias"
       targets <- c(mu, fix, 1)
     }
@@ -305,6 +266,80 @@ i.test_internal <- function(entities, v, mu, classX, gY, gX, oneSample, fix){
     estimate = estimate
   )
 }
+
+estimateMarginal <- function(entities, v, mu, classX, gY, gX, oneSample){
+
+
+
+  f <- function(x){
+    i.test_internal(
+      entities = entities,
+      v = v,
+      mu = mu,
+      classX = classX,
+      gY = gY, gX = gX,
+      oneSample = oneSample,
+      fix = x
+    )$idiv
+  }
+  lower <- upper <- NULL
+  if (classX == "numeric"){
+    xx <- sort(unique(gX))
+    i <- 1
+    while(!is.finite((fLower <- f(xx[i]))) && i <= length(xx)){
+      lower <- xx[i]
+      i <- i + 1
+    }
+
+
+    ## what do we do if fLower is infinite?
+    ## there may be still a solution
+    if (!is.finite(fLower)){
+      res <-  i.test_internal(
+        entities = entities,
+        v = v,
+        mu = mu,
+        classX = classX,
+        gY = gY, gX = gX,
+        oneSample = oneSample,
+        fix = lower
+      )
+      res$estimatedMarginal <- NA
+      return(res)
+    }
+
+    i <- length(xx)
+
+    while(!is.finite((fUpper <- f(xx[i]))) && i > 0){
+      upper <- xx[i]
+      i <- i - 1
+    }
+  } else{
+    lower <- 0
+    upper <- 1
+  }
+
+  opt <- optimize(
+    f,
+    interval = c(lower, upper),
+    tol = .Machine$double.eps
+  )
+  cat(opt$objective, "\n")
+  res <-  i.test_internal(
+    entities = entities,
+    v = v,
+    mu = mu,
+    classX = classX,
+    gY = gY, gX = gX,
+    oneSample = oneSample,
+    fix = opt$minimum
+  )
+  res$estimatedMarginal <- opt$minimum
+  return(res)
+
+}
+
+
 
 #' @export
 i.test.character <- function(y, x = NULL, ...){
