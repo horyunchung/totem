@@ -12,6 +12,22 @@ i.test(
   fix = FALSE
 )
 }
+\arguments{
+\item{formula}{an object of class "formula"}
+
+\item{data}{a data.frame containg the variables in the formula}
+
+\item{alternative}{a character string specifying the alternative hypothesis,
+must be one of "two.sided" (default), "greater" or "less". You can specify
+just the initial letter.}
+
+\item{mu}{a number indicating the true value of the rate/mean difference or
+the bias}
+
+\item{fix}{a logical indicating whether to fix the predictor marginal
+to the sample marginal (fix = TRUE) or not (fix = FALSE). Additionally also
+the value of the predictor marginal can be given}
+}
 \description{
 Performs a two way $I$-test.
 }

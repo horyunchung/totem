@@ -62,10 +62,10 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
     update <- tryCatch(
       {
         ## against numerical stability issues
-        QR <- qr(C %*% (CT * iProjection[,1]))
-        CT %*% solve.qr(QR, ((C %*% iProjection) - targets))
-        #inverseJacobian <- solve(C %*% (CT * iProjection[,1]))
-        #CT %*% inverseJacobian %*% ((C %*% iProjection) - targets)
+        #QR <- qr(C %*% (CT * iProjection[,1]))
+        #CT %*% solve.qr(QR, ((C %*% iProjection) - targets))
+        inverseJacobian <- solve(C %*% (CT * iProjection[,1]))
+        CT %*% inverseJacobian %*% ((C %*% iProjection) - targets)
       },
       error = function(e){
         e
