@@ -113,12 +113,12 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
     message("estimating marginal")
     pH <- estimateMarginal(entities, entities$empirical, mu, classX, gY, gX, oneSample)
 
-    cat("H: estimated marginal:", pH$estimatedMarginal, "\n")
+    message("H: estimated marginal:", pH$estimatedMarginal)
     estimate <- pH$estimate
 
     if (pH$p$converged == TRUE){
       pA <- estimateMarginal(entities, pH$p$p, estimate, classX, gY, gX, oneSample)
-      cat("A: estimated marginal:", pA$estimatedMarginal, "\n")
+      message("A: estimated marginal:", pA$estimatedMarginal)
       idiv <- pA$idiv
     } else{
       idiv <- NA
@@ -339,7 +339,6 @@ estimateMarginal <- function(entities, v, mu, classX, gY, gX, oneSample){
     interval = c(lower, upper),
     tol = .Machine$double.eps
   )
-  cat(opt$objective, lower, upper, "\n")
   res <-  i.test_internal(
     entities = entities,
     v = v,
