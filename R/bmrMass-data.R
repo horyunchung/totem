@@ -11,7 +11,7 @@
 #'
 #' @keywords dataset
 #'
-#' @reference Genoud et al. (2018) Comparative analyses of basal rate of metabolism in
+#' @references Genoud et al. (2018) Comparative analyses of basal rate of metabolism in
 #' mammals: data selection does matter. Biological Reviews 93 (1), 404–438.
 #'
 #' @examples
