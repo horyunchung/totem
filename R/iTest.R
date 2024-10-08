@@ -219,7 +219,10 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
     alternative = alternative,
     method = method,
     data.name = dname,
-    sample.size = attr(entities, "N")
+    sample.size = attr(entities, "N"),
+    pH = pH,
+    pA = pA,
+    entities = entities
   )
   class(rval) <- "htest"
   return(rval)
