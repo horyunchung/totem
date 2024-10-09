@@ -1,7 +1,7 @@
 #' Basic metabolic rate/body mass data
 #'
-#' Data from Genoud et al. (2018) for the basic metabolic rate and body mass of
-#' 549 mammals.
+#' Data from Genoud et al. (2018) for the basal metabolic rate and body mass of
+#' 549 mammalian species.
 #'
 #' @docType data
 #'

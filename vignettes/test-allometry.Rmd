@@ -1,8 +1,20 @@
 ---
 title: "The $I$-test"
-output: rmarkdown::html_vignette
-vignette: >
-  %\VignetteIndexEntry{The $I$-test}
+author:
+- name: Orestis Loukas
+  affiliation: Philipps-University Marburg, Germany
+- name: Ho-Ryun Chung
+  affiliation: Philipps-University Marburg, Germany
+  email: ho.chung@staff.uni-marburg.de
+package: totem
+output:
+  BiocStyle::html_document
+abstract: |
+  Statistical testing is a common procedure to demarcate "good" from "bad" theories. Here,    we provide a reference implementation for our totally empirical (TOTEM) statistics          framework. We implement the two-way $I$-test for testing group mean and rate differences    as well as arbitrary relationships between two metric variables. 
+  
+  totem package version: `r packageVersion("totem")` 
+vignette: |
+  %\VignetteIndexEntry{totem}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -33,7 +45,7 @@ The interface uses a formula of the form `lhs ~ rhs`, where `lhs` corresponds to
 ## One-sample $I$-test
 
 ### Dichotomous categorical response
-This corresponds to a exact binomial test. We use the example provided in the help file for the `binom.test` function: "Under (the assumption of) simple Mendelian inheritance, a cross between plants of two particular genotypes produces progeny 1/4 of which are "dwarf" and 3/4 of which are "giant", respectively. In an experiment to determine if this assumption is reasonable, a cross results in progeny having 243 dwarf and 682 giant plants."
+This corresponds to an exact binomial test. We use the example provided in the help file for the `binom.test` function: "Under (the assumption of) simple Mendelian inheritance, a cross between plants of two particular genotypes produces progeny 1/4 of which are "dwarf" and 3/4 of which are "giant", respectively. In an experiment to determine if this assumption is reasonable, a cross results in progeny having 243 dwarf and 682 giant plants."
 
 ```{r phenotype}
 phenotype <- factor(c(rep("giant", 682), rep("dwarf", 243)), levels = c("dwarf", "giant"))
@@ -88,6 +100,11 @@ convictions <- data.frame(
   conviction = c(rep("yes", 2), rep("no", 15), rep("yes", 10), rep("no", 3))
 )
 ```
+With corresponding 2-way contingency table
+```{r contingencyTable}
+table(convictions)
+```
+
 The null hypothesis for Fisher's exact test is:
 $$
   H_0: \frac{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Dizygotic"})}{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Monozygotic"})} = 1
@@ -105,6 +122,8 @@ Note that Fisher's exact test assumes that both the marginal probabilities for t
 library(Barnard)
 barnard.test(2,10,15,3)
 ```
+Despite the fact that Fisher's exact test uses more information from the data, its $p$-value ($p = `r round(fisher.test(table(convictions)[, c("yes", "no")])$p.value, 6)`$) is larger than the $p$-value of Barnard's test ($p = `r round(barnard.test(2,10,15,3)$p.value[2], 6)`$).
+
 Alternatively, we could use the $I$-test for an experimental study design as outline above by setting the option `fix` to `TRUE`:
 ```{r}
 i.test(conviction ~ twinType, data = convictions, fix = TRUE)
@@ -119,10 +138,101 @@ i.test(conviction ~ twinType, data = convictions, fix = FALSE)
 ```
 
 ### Metric response against a dichotomous categorical attribute
+This is the classical two-sample $t$-test scenario. We take the Student's sleep data used for the one-sample example.
+The null hypothesis is that the average increase in hours of sleep is the same for the two drugs given:
+$$
+  H_0: \mu_\text{drug 1} = \mu_\text{drug 2}
+$$
+and the alternative is:
+$$
+  H_1: \mu_\text{drug 1} \ne \mu_\text{drug 2}
+$$
+We test the null hypothesis at a signficance level of 5% using the Student's $t$-test
+```{r twoSampleStudent}
+t.test(extra ~ group, data = sleep, var.equal = TRUE)
+```
+or using Welch's $t$-test
+```{r twoSampleWelch}
+t.test(extra ~ group, data = sleep, var.equal = FALSE)
+```
+or using the $I$-test in the experimental setting (group sizes are fixed):
+```{r twoSample.i.t.test.MetricExperimental}
+i.test(extra ~ group, data = sleep, fix = TRUE)
+```
+or using the $I$-test in the observational setting:
+```{r twoSample.i.test.MetricObservational}
+i.test(extra ~ group, data = sleep, fix = FALSE)
+```
+In contrast to the $t$-test the $I$-test detects a significant difference! Moreover, the $t$-test cannot account for the different study designs, which in this example lead to only a small difference.
+
+Actually the sleep data is paired, i.e. the study design is a cross-over study, where the same patient takes drug 1 and drug 2.
+
+So we can formulate a much better informed null hypothesis, namely that the mean difference in the increase in hours sleep of drug 2 versus drug 1 (per participant) is zero.
+We reformat the sleep data.frame from long to wide format
+```{r, longToWide}
+sleep2 <- reshape(sleep, direction = "wide",
+                  idvar = "ID", timevar = "group")
+```
+We will evaluate the null hypothesis that the mean difference of the increase in hours sleep for drug 2 versus drug 1 is zero:
+$$
+  H_0: E(Y_\text{drug 2} - Y_\text{drug 1}) = 0 
+$$
+and the alternative
+$$
+  H_1: E(Y_\text{drug 2} - Y_\text{drug 1}) \ne 0 
+$$
+The $t$-test yields this result:
+```{r, paired.t.test}
+t.test(Pair(extra.2, extra.1) ~ 1, data = sleep2)
+```
+While the $I$-test this one:
+```{r, paired.i.test}
+i.test(I(extra.2 - extra.1) ~ 1, data = sleep2)
+```
+Here, the $I$-test does not report a result. This can be understood upon looking at the values of the difference:
+```{r}
+with(sleep2, stripchart(extra.2 - extra.1), pch = 16)
+```
+All differences are equal to or larger than zero. The only way to obtain the hypothesis distribution with a mean difference of zero is to put all weight to the participant with zero difference. The `NA` for the $p$-value usually signals that the hypothesis TOTEMplex $\mathcal{T}_\text{H}$ is empty, i.e. formally no $p$-value can be calculated. However, here the generic implementation of the $I$-test breaks, because the hypothesis condition that the mean difference is zero becomes redundant to the structural normalization condition. Thus, the hypothesis TOTEMplex $\mathcal{T}_\text{H}$ has only one member (the one that puts all weight to the patient with zero difference).  But from this hypothesis distribution, it is impossible to sample back datasets with an observed mean difference of $\mu = `r with(sleep2, mean(extra.2 - extra.1))`$. Thus, the empirical $p$-value is zero.
 
 ### Metric response against a metric attribute
-and load the example basic metabolic rate (BMR) body mass data
+Finally, we want to test two so-called allometric laws that relate the basal metabolic rate (BMR) to the body weight. The first law is referred to as Rubner's law and has the following form:
+$$
+  \langle Y \rangle = \left\langle \frac{Y}{X^{2/3}} \right\rangle~\langle X^{2/3}\rangle.
+$$
+This is a "mild" condition on the law, i.e. we do not expect that all species obey Rubner's law (fundamental law) but that they obey it in expectation (effective law).
+
+The second law is referred to as Kleiber's law:
+$$
+  \langle Y \rangle = \left\langle \frac{Y}{X^{3/4}} \right\rangle~\langle X^{3/4}\rangle.
+$$
+
+We will be using data from Genoud et al. (2018) for the basal metabolic rate and body mass of 549 mammalian species:
 ```{r bmrMassData}
 data("bmrMass")
 ```
+We can test the hypothesis that Rubner's law is obeyed in expectation by using the $I$-test
+```{r}
+i.test(BMR ~ I(Mass^(2/3)), data = bmrMass)
+```
+Per default the $I$-test will estimate the fractional moment $\langle X^{2/3}\rangle$, i.e. the study design is per default set to observational. Here, the test result shows that we can construct the hypothesis distribution. However, we cannot sample any dataset from it that has a bias at least as large as the observed one! Hence, the $p$-value is zero.
+
+If we knew the fractional moment $\langle X^{2/3}\rangle$ beforehand, we could prespecify it and use the $I$-test for an experimental study design:
+```{r}
+i.test(BMR ~ I(Mass^(2/3)), data = bmrMass, fix = TRUE)
+```
+So for both study designs, we can reject the null hypothesis, i.e. Rubner's law is refuted by the data.
+
+For Kleiber's law, we use the $I$-test for the observational study design
+```{r}
+i.test(BMR ~ I(Mass^(3/4)), data = bmrMass)
+```
+or we could use the experimental study design
+```{r}
+i.test(BMR ~ I(Mass^(3/4)), data = bmrMass, fix = TRUE)
+```
+Note the one-order-of-magnitude difference between the $p$-value for the observational versus experimental study design. This underlines again that in order to enjoy the increased statistical power obtained by controlling the predictor attribute this can and should be prespecified to prevent $p$-value hacking.
+
+Both $I$-tests reveal a $p$-value smaller than the 5% significance level, i.e. also Kleiber's law is refuted by the data!
+
 
