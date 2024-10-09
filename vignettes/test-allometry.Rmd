@@ -13,7 +13,24 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 ```
+# Installing TOTEM
+```{r installTOTEM, eval=FALSE}
+if (! requireNamespace("devtools", quietly = TRUE))
+  install.packages("devtools")
+  
+devtools::install_github("horyunchung/totem")
+```
 
+# Using the $I$-test
+Load the `totem` package
 ```{r setup}
 library(totem)
 ```
+and load the example basic metabolic rate (BMR) body mass data
+```{r bmrMassData}
+data("bmrMass")
+```
+Currently only two-way tests for categorical response against a dichotomous 
+categorical attribute, metric response against a dichotomous categorical 
+attribute, and metric response against metric attribute is implemented.
+
