@@ -1,12 +1,15 @@
 Package: totem
 Type: Package
-Title: What the Package Does (Title Case)
-Version: 0.1.0
-Author: Orestis Loukas & Ho Ryun Chung
-Maintainer: The package maintainer <yourself@somewhere.net>
-Description: More about what it does (maybe more than one line)
-    Use four spaces when indenting paragraphs within the Description.
-License: What license is it under?
+Title: Totally Empirical (TOTEM) Statistics
+Version: 1.0.0
+Authors@R: c(
+  person("Orestis", "Loukas", role=c("aut")),
+  person("Ho-Ryun", "Chung", email="ho.chung@staff.uni-marburg.de", role=c("aut", "cre")))
+Maintainer: Ho-Ryun Chung <ho.chung@staff.uni-marburg.de>
+Description: Implements the I-Projector and the I-test for catergorical/categorical,
+  metric/categorical rate and mean comparisons for the observational and experimental
+  study design.
+License: LGPL (>= 3)
 Encoding: UTF-8
 LazyData: true
 Imports: dplyr
@@ -14,4 +17,4 @@ RoxygenNote: 7.2.3
 Suggests: 
     knitr,
     rmarkdown
-VignetteBuilder: knitr
+VignetteBuilder: knitr, rmarkdown
