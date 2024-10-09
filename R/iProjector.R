@@ -74,6 +74,10 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
       break
     }
     updatedProjection<- iProjection * exp(-update)
+    if (! all(is.finite(updatedProjection))){
+      status = "something went wrong"
+      break
+    }
     if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
       updatedtargets <- C %*% updatedProjection
       if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
