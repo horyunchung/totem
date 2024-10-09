@@ -93,7 +93,6 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
     if(is.logical(fix)){
       if (fix == TRUE){
         fix <- sum(entities$empirical * gX)
-        cat("asd", fix, "\n")
       }
     } else if (!is.numeric(fix) || length(fix) != 1L){
       stop("invalid value for fix")
@@ -102,13 +101,13 @@ i.test <- function(formula, data, alternative = c("two.sided", "less", "greater"
 
   #print("YY: ", str(gY))
   #print("XX: ", str(gX))
-  if(classY == "factor" && classX == "numeric")
+  if(!oneSample && classY == "factor" && classX == "numeric")
     stop("categorical 'response' with numeric 'predictor' is not supported")
 
   ## so what do we do?
   idiv <- NULL
   estimate <- NULL
-
+  pA <- NULL
   if (fix == FALSE && !oneSample){
     message("estimating marginal")
     pH <- estimateMarginal(entities, entities$empirical, mu, classX, gY, gX, oneSample)

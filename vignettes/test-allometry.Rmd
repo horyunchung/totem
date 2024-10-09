@@ -1,8 +1,8 @@
 ---
-title: "Testing allometric laws using the $I$-test"
+title: "The $I$-test"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Testing allometric laws using the $I$-test}
+  %\VignetteIndexEntry{The $I$-test}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -26,11 +26,103 @@ Load the `totem` package
 ```{r setup}
 library(totem)
 ```
+Currently only two-way tests for dichotomous categorical response against a dichotomous categorical attribute, metric response against a dichotomous categorical attribute, and metric response against metric attribute is implemented.
+
+The interface uses a formula of the form `lhs ~ rhs`, where `lhs` corresponds to the "response", which is either a dichotomous (binary) character/factor or a numeric variable and `rhs` corresponds to the "predictor", which is either a dichotomous (binary) character/factor (for categorical or metric response) or a numeric variable (for metric response only).
+
+## One-sample $I$-test
+
+### Dichotomous categorical response
+This corresponds to a exact binomial test. We use the example provided in the help file for the `binom.test` function: "Under (the assumption of) simple Mendelian inheritance, a cross between plants of two particular genotypes produces progeny 1/4 of which are "dwarf" and 3/4 of which are "giant", respectively. In an experiment to determine if this assumption is reasonable, a cross results in progeny having 243 dwarf and 682 giant plants."
+
+```{r phenotype}
+phenotype <- factor(c(rep("giant", 682), rep("dwarf", 243)), levels = c("dwarf", "giant"))
+```
+
+If "giant" is taken as success, the null hypothesis is that the probability for "giant" (success) is
+$$
+  H_0: p = 3/4
+$$
+and the alternative is
+$$
+  H_1: p \ne 3/4
+$$
+We test this null hypothesis (at a significance level of 5%) using the exact binomial test
+```{r binom.test}
+binom.test(table(phenotype)[c("giant", "dwarf")], p = 3/4)
+```
+and using the $I$-test
+```{r oneSample.i.test.rates}
+i.test(phenotype ~ 1, data = data.frame(phenotype = phenotype), mu = 3/4)
+```
+Note that the 2nd level of the categorical variable on the `lhs` is taken as "success".
+
+
+### Metric response
+This corresponds to a one-sample $t$-test. We use the classical example provided in the help file for the `t.test` function: "Student's sleep data".
+
+The null hypothesis is that the mean increase in hours of sleep is zero.
+$$
+  H_0: \mu_\text{extra} = 0
+$$
+and the alternative is
+$$
+  H_1: \mu_\text{extra} \ne 0
+$$
+We test this null hypothesis (at a significance level of 5%) using the one-sample $t$-test:
+```{r oneSample.t.test}
+t.test(extra ~ 1, data = sleep)
+```
+and using the $I$-test
+```{r oneSample.i.test.means}
+i.test(extra ~ 1, data = sleep, mu = 0)
+```
+
+## Two-sample $I$-test
+
+### Dichotomous categorical response against a dichotomous categorical attribute
+This corresponds to Fisher's Exact test, Bernard's test, or Pearson's $\chi^2$ test. We take the example provided in the help file for the `fisher.test` function:
+```{r convictionData}
+convictions <- data.frame(
+  twinType = c(rep("Dizygotic", 17), rep("Monozygotic", 13)),
+  conviction = c(rep("yes", 2), rep("no", 15), rep("yes", 10), rep("no", 3))
+)
+```
+The null hypothesis for Fisher's exact test is:
+$$
+  H_0: \frac{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Dizygotic"})}{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Monozygotic"})} = 1
+$$
+and the alternative is:
+$$
+  H_1: \frac{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Dizygotic"})}{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Monozygotic"})} \ne 1
+$$
+We test this null hypothesis (at a significance level of 5%) using Fisher's exact test:
+```{r fisher.test}
+fisher.test(table(convictions)[, c("yes", "no")])
+```
+Note that Fisher's exact test assumes that both the marginal probabilities for the twinType attribute as well as the conviction attribute are fixed (prespecifiable!). This is not the case. So let's assume that only the marginal probabilities for the twinType attribute had been fixed in advance ("experimental study design"). In this scenario we should use Barnard's test instead:
+```{r}
+library(Barnard)
+barnard.test(2,10,15,3)
+```
+Alternatively, we could use the $I$-test for an experimental study design as outline above:
+```{r}
+i.test(conviction ~ twinType, data = convictions, fix = TRUE)
+```
+Finally, if we cannot assume that the probability of the twinType was fixed by the study design, we need to resort to the "observational study design": In this scenario we should use Pearson's $\chi^2$ test:
+```{r}
+prop.test(table(convictions)[, c("yes", "no")])
+```
+or with the $I$-test:
+```{r}
+i.test(conviction ~ twinType, data = convictions, fix = FALSE)
+```
+
+### Metric response against a dichotomous categorical attribute
+
+### Metric response against a metric attribute
 and load the example basic metabolic rate (BMR) body mass data
 ```{r bmrMassData}
 data("bmrMass")
 ```
-Currently only two-way tests for categorical response against a dichotomous 
-categorical attribute, metric response against a dichotomous categorical 
-attribute, and metric response against metric attribute is implemented.
 

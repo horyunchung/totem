@@ -3,8 +3,8 @@ Type: Package
 Title: Totally Empirical (TOTEM) Statistics
 Version: 1.0.0
 Authors@R: c(
-  person("Orestis", "Loukas", email="ho.chung@staff.uni-marburg.de", role=c("aut")),
-  person("Ho-Ryun", "Chung", role=c("aut", "cre")))
+  person("Orestis", "Loukas", role=c("aut")),
+  person("Ho-Ryun", "Chung", email="ho.chung@staff.uni-marburg.de", role=c("aut", "cre")))
 Maintainer: Ho-Ryun Chung <ho.chung@staff.uni-marburg.de>
 Description: Implements the I-Projector and the I-test for catergorical/categorical,
   metric/categorical rate and mean comparisons for the observational and experimental
