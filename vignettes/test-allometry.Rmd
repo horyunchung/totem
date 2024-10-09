@@ -1,8 +1,8 @@
 ---
-title: "test-allometry"
+title: "Testing allometric laws using the $I$-test"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{test-allometry}
+  %\VignetteIndexEntry{Testing allometric laws using the $I$-test}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
