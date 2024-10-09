@@ -1,7 +1,7 @@
 Package: totem
 Type: Package
 Title: Totally Empirical (TOTEM) Statistics
-Version: 1.0.0
+Version: 1.0
 Authors@R: c(
   person("Orestis", "Loukas", role=c("aut")),
   person("Ho-Ryun", "Chung", email="ho.chung@staff.uni-marburg.de", role=c("aut", "cre")))

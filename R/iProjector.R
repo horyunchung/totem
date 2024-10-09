@@ -73,21 +73,6 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
       break
     }
     updatedProjection<- iProjection * exp(-update)
-<<<<<<< HEAD
-    if (! all(is.finite(updatedProjection))){
-      status = "something went wrong"
-      break
-    }
-    if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
-      updatedtargets <- C %*% updatedProjection
-      if (all(abs(updatedtargets[,1] - targets[,1]) < tolerance)){
-        status <- "converged"
-        converged <- TRUE
-        iProjection <- updatedProjection
-      } else{
-        status <- "targets not fulfilled"
-        iProjection <- updatedProjection
-=======
     if (all(is.finite(updatedProjection))){
       if (all(abs(updatedProjection[,1] - iProjection[,1]) < conv_tolerance)){
         updatedtargets <- C %*% updatedProjection
@@ -101,7 +86,6 @@ iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, ma
           #iProjection <- updatedProjection
         }
 
->>>>>>> c4fca56403f5222c7db6a487c80fa78c845ecb3c
       }
       iProjection <- updatedProjection
     } else{
