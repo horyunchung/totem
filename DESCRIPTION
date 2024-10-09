@@ -7,8 +7,8 @@ Authors@R: c(
   person("Ho-Ryun", "Chung", role=c("aut", "cre")))
 Maintainer: Ho-Ryun Chung <ho.chung@staff.uni-marburg.de>
 Description: Implements the I-Projector and the I-test for catergorical/categorical,
-metric/categorical rate and mean comparisons for the observational and experimental
-study design.
+  metric/categorical rate and mean comparisons for the observational and experimental
+  study design.
 License: LGPL (>= 3)
 Encoding: UTF-8
 LazyData: true
