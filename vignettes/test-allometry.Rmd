@@ -105,15 +105,15 @@ Note that Fisher's exact test assumes that both the marginal probabilities for t
 library(Barnard)
 barnard.test(2,10,15,3)
 ```
-Alternatively, we could use the $I$-test for an experimental study design as outline above:
+Alternatively, we could use the $I$-test for an experimental study design as outline above by setting the option `fix` to `TRUE`:
 ```{r}
 i.test(conviction ~ twinType, data = convictions, fix = TRUE)
 ```
 Finally, if we cannot assume that the probability of the twinType was fixed by the study design, we need to resort to the "observational study design": In this scenario we should use Pearson's $\chi^2$ test:
 ```{r}
-prop.test(table(convictions)[, c("yes", "no")])
+prop.test(table(convictions)[, c("yes", "no")], correct = FALSE)
 ```
-or with the $I$-test:
+or with the $I$-test for an observational study design as outline above by setting the option `fix` to `FALSE`:
 ```{r}
 i.test(conviction ~ twinType, data = convictions, fix = FALSE)
 ```
