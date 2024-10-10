@@ -131,12 +131,12 @@ $$
 
 ```{r}
 ## convert to entities
-entities <- toEntities((convictions))
+entities <- toEntities((convictions[, c("conviction", "twinType")]))
 ## marginals
 marginalTwinType = with(entities, tapply(empirical, twinType, sum))
 marginalConviction = with(entities, tapply(empirical, conviction, sum))
 ## hypothesis distribution
-(pH <- marginalTwinType %*% t(marginalConviction))
+(pH <- with(entities, marginalTwinType[twinType] * marginalConviction[conviction]))
 ```
 All we have to do is to calculate the $I$-divergence of the hypothesis distribution to the empirical distribution 
 ```{r}
@@ -146,6 +146,33 @@ which gives a $p$-value according to the $\chi^2$ distribution with 1 degree of 
 ```{r}
 pchisq(2 * attr(entities, "N") * idiv, df = 1, lower.tail = FALSE)
 ```
+
+```{r}
+G <- rbind(
+  c(0, 1 / marginalTwinType[1], 0, -1 / marginalTwinType[2]),
+  c(1,1, 0,0),
+  c(1, 0, 1, 0),
+  c(1,1,1,1)
+)
+mu = c(0, marginalTwinType[1], marginalConviction[1], 1)
+pH <- iProjector(G, mu, v = entities$empirical)
+pA <- iProjector(G, G %*% entities$empirical, v = pH$p)
+
+
+G <- rbind(
+  c(0, 0, -1 / marginalTwinType[1], 1 / marginalTwinType[2]),
+  c(0,1, 0,1),
+  #c(1, 0, 1, 0),
+  c(1,1,1,1)
+)
+mu = c(0, marginalTwinType[2], 1)
+pH1 <- iProjector(G, mu, v = entities$empirical)
+pA1 <- iProjector(G, G %*% entities$empirical, v = pH$p)
+
+```
+
+
+
 
 Note that Fisher's exact test assumes that both the marginal probabilities for the twinType attribute as well as the conviction attribute are fixed (prespecifiable!). This is not the case. So let's assume that only the marginal probabilities for the twinType attribute had been fixed in advance ("experimental study design"). In this scenario we should use Barnard's test instead:
 ```{r}
