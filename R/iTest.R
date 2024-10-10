@@ -259,6 +259,7 @@ i.test_internal <- function(entities, v, mu, classX, gY, gX, oneSample, fix){
       estimate <- sum(entities$empirical * ifelse(entities$x == levels(entities$x)[2], gY / marginal, -gY / (1 - marginal)))
       names(estimate) = paste("difference", if (class(gY) == "numeric") "means" else "rates")
       targets <- c(mu, fix, 1)
+      print(targets)
     } else{
       C <- rbind(
         gY - gY/gX * fix,
