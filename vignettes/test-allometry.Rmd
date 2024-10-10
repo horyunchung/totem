@@ -107,30 +107,58 @@ table(convictions)
 
 The null hypothesis for Fisher's exact test is:
 $$
-  H_0: \frac{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Dizygotic"})}{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Monozygotic"})} = 1
+  H_0: \frac{\text{Odds}(\text{conviction = yes}|\text{twinType = Dizygotic})}{\text{Odds}(\text{conviction = yes}|\text{twinType = Monozygotic})} = 1
 $$
 and the alternative is:
 $$
-  H_1: \frac{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Dizygotic"})}{\text{Odds}(\text{conviction = "yes"}|\text{twinType = "Monozygotic"})} \ne 1
+  H_1: \frac{\text{Odds}(\text{conviction = yes}|\text{twinType = Dizygotic})}{\text{Odds}(\text{conviction = yes}|\text{twinType = Monozygotic})} \ne 1
 $$
 We test this null hypothesis (at a significance level of 5%) using Fisher's exact test:
 ```{r fisher.test}
 fisher.test(table(convictions)[, c("yes", "no")])
 ```
+We have not implemented the "tea-tasting" study design, where both marginal probabilities for the twinType attribute as well as the conviction attribute are fixed. This study design leads to four conditions for the four (unknown) probabilities of the hypothesis distribution.
+
+1. the conditional rate for conviction for mono- and dizygotic twins is equal
+2. the overall conviction rate is fixed to the observed one
+3. the overal rate for monozygotic twins is fixed to the observed one
+4. all probabilities sum up to one
+
+Which means that the hypothesis distribution is given by
+$$
+  p(Y, X) = f_Y(Y)~f_X(X)
+$$
+
+```{r}
+## convert to entities
+entities <- toEntities((convictions))
+## marginals
+marginalTwinType = with(entities, tapply(empirical, twinType, sum))
+marginalConviction = with(entities, tapply(empirical, conviction, sum))
+## hypothesis distribution
+(pH <- marginalTwinType %*% t(marginalConviction))
+```
+All we have to do is to calculate the $I$-divergence of the hypothesis distribution to the empirical distribution 
+```{r}
+(idiv <- iDivergence(entities$empirical, pH))
+```
+which gives a $p$-value according to the $\chi^2$ distribution with 1 degree of freedom for the statistic $t = 2~N~D(\mathfrak{f}\vert\vert \mathfrak{p}_\text{H})$
+```{r}
+pchisq(2 * attr(entities, "N") * idiv, df = 1, lower.tail = FALSE)
+```
+
 Note that Fisher's exact test assumes that both the marginal probabilities for the twinType attribute as well as the conviction attribute are fixed (prespecifiable!). This is not the case. So let's assume that only the marginal probabilities for the twinType attribute had been fixed in advance ("experimental study design"). In this scenario we should use Barnard's test instead:
 ```{r}
 library(Barnard)
 barnard.test(2,10,15,3)
 ```
-Despite the fact that Fisher's exact test uses more information from the data, its $p$-value ($p = `r round(fisher.test(table(convictions)[, c("yes", "no")])$p.value, 6)`$) is larger than the $p$-value of Barnard's test ($p = `r round(barnard.test(2,10,15,3)$p.value[2], 6)`$).
-
 Alternatively, we could use the $I$-test for an experimental study design as outline above by setting the option `fix` to `TRUE`:
 ```{r}
 i.test(conviction ~ twinType, data = convictions, fix = TRUE)
 ```
 Finally, if we cannot assume that the probability of the twinType was fixed by the study design, we need to resort to the "observational study design": In this scenario we should use Pearson's $\chi^2$ test:
 ```{r}
-prop.test(table(convictions)[, c("yes", "no")], correct = FALSE)
+prop.test(table(convictions)[, c("yes", "no")])
 ```
 or with the $I$-test for an observational study design as outline above by setting the option `fix` to `FALSE`:
 ```{r}
@@ -235,4 +263,117 @@ Note the one-order-of-magnitude difference between the $p$-value for the observa
 
 Both $I$-tests reveal a $p$-value smaller than the 5% significance level, i.e. also Kleiber's law is refuted by the data!
 
+## Generalized $I$-test
+We have implemented some standard testing scenarios. However, the $I$-test is much more versatile. 
 
+### Equality of means for more than two groups
+For this example we use the `iris` dataset. Here, we want to know whether the attribute ``r (what = "Sepal.Length")`` differs between the three species of irs. The standard approach of the "old statistics" is the one-factorial ANOVA. The validity of the results of an one-factorial ANOVA depends on the validity of two assumptions:
+
+1. **Normality**: The ``r what`` attribute should follow a normal distribution in each species.  
+   We check this assumption by applying the Shapiro-Wilks test for normality for the ``r what`` attribute in each species
+   ```{r}
+   tapply(iris[, what], iris$Species, shapiro.test)
+   ```  
+   Normality cannot be rejected (at the 5% significance level). 
+
+2. **Homoscedasticity**: The variance of the ``r what`` attribute should be equal
+   We check this assumption by applying Bartlett's test of the homogeneity of variances:
+   ```{r}
+   bartlett.test(formula(paste(what, "~Species")), data = iris)
+   ```
+   Here, the null hypothesis that the variances are equal must be rejected.
+
+Formally speaking this invalidates the results of an one-factorial ANOVA, such that it should not be used. The one-factorial ANOVA gives following result
+```{r oneFactorialANOVA}
+summary(aov(as.formula(paste(what, "~ Species")), data = iris))
+```
+The $I$-test does not require these assumptions. So we implement here (the application-dependent) $I$-test for this test scenario:
+
+1. Convert the data into the entity representation
+   ```{r toEntities}
+   entities <- toEntities(subset(iris, select = c(what, "Species")))
+   ```
+
+2. Compute the marginal probabilities of the species
+   ```{r marginalSpecies}
+   (marginalSpecies <- with(entities, tapply(empirical, Species, sum)))
+   ```
+3. Define the coefficient matrix $\mathbf{G}$
+   ```{r coefficientMatrix}
+   G <- rbind(
+      ## hypothesis constraints
+      ifelse(
+        entities$Species == "versicolor", 
+        entities[, what] / marginalSpecies["versicolor"], 
+        ifelse(entities$Species == "setosa", 
+           -entities[, what] / marginalSpecies["setosa"], 
+          0
+        )
+      ),
+      ifelse(
+        entities$Species == "virginica", 
+          entities[, what] / marginalSpecies["virginica"], 
+          ifelse(entities$Species == "setosa", 
+            -entities[, what] / marginalSpecies["setosa"], 
+            0
+          )
+      ),
+      ## structural constraints
+      ifelse(
+        entities$Species == "setosa",
+        1,
+        0
+      ),
+      ifelse(
+        entities$Species == "versicolor", 
+        1,
+        0
+      ),
+      ifelse(
+        entities$Species == "virginica", 
+        1,
+        0
+      )
+   )
+   ```
+  The first row of $\mathbf{G}$ computes the difference of the conditional mean of the ``r what`` attribute of the species "versicolor" minus the one of "setosa". The second row computes the difference of the conditional mean of the ``r what`` attribute of the species "virginica" minus the one of "setosa". Our null hypothesis conditions these two differences to be zero. The following three rows compute the marginal probabilities of the three species (which, since they sum to one, imply the normalization condition).
+
+4. Define the conditions for the null hypothesis
+   ```{r mu}
+   mu <- c(0,0, marginalSpecies)
+   ```
+5. Compute the $I$-projection of the empirical distribution $\mathfrak{f}$ (stored in the `empirical` column of the `entities` data.frame) onto the hypothesis TOTEMplex $\mathcal{T}_\text{H}$:
+   ```{r hypothesisDistribution}
+   pH <- iProjector(G, targets = c(0,0, marginalSpecies), v = entities$empirical)
+   ```
+6. Compute the alternative distribution $\mathfrak{p}_\text{A}$ as the $I$-projection of the hypothesis distribution to the alternative TOTEMplex $\mathcal{T}_\text{A}$, which contains all distributions, which solve $\mathbf{G} \mathfrak{p} = \mathbf{G} \mathfrak{f}$:
+   ```{r alternativeDistribution}
+   pA <- NULL
+   if (pH$converged == TRUE){
+     pA <- iProjector(G, targets = G %*% entities$empirical, v = pH$p)
+     if (pA$converged == TRUE){
+       (idiv <- iDivergence(pA$p, pH$p))
+     } else{
+       (idiv <- Inf)
+     }
+   } else{
+     idiv <- NA
+   }
+   ```
+   We need to check whether we were able to construct the hypothesis distribution first. If not this means that we, formally speaking, cannot compute a $p$-value. Next, we need to check whether we were able to construct the alternative distribution. If not this means that the data cannot be sampled from the hypothesis distribution: the $p$-value is zero.
+
+7. Compute the $p$-value (if applicable)
+   ```{r, pValue}
+   (p.value <- pchisq(
+     2 * attr(entities, "N") * idiv, 
+     df = 2, 
+     lower.tail = FALSE)
+    )
+
+   ```
+   Note that we use two degrees of freedom here, because we have two hypothesis conditions!
+
+So the $I$-test reveals that the mean of the ``r what`` attribute differs in at least two Species, which is confirmed by looking at the data:
+```{r plotData}
+stripchart(formula(paste(what, "~Species")), data = iris, method = "jitter")
+```
