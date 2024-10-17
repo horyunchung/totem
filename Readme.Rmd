@@ -24,5 +24,9 @@ devtools::install_github(
   build_vignettes = TRUE
 )
 ```
+The vignette shows how to use the package
+```{r showVignette, eval=FALSE}
+vignette("I-test", package = "totem")
+```
 
 
