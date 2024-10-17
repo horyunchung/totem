@@ -14,8 +14,8 @@
 #' @return A data.frame with unique rows of the data table with selected columns with
 #' a new column \code{empirical} denoting the empirical relative frequency distribution.
 #' The attribute \code{attr(*, "N")} corresponds to the number of data points (rows).
-#' @export
 #'
+#' @export
 toEntities <- function(data, select = NULL, cartesian = FALSE){
   ## check input
   if (!is.data.frame(data)){

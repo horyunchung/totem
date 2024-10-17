@@ -17,7 +17,6 @@
 #'  \code{info} \tab information about the convergence
 #'  }
 #'
-
 #' @export
 iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, maxIter = 10000L){
 
