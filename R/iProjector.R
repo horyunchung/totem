@@ -1,6 +1,6 @@
 #' iProjector
 #'
-#' Compute the I-projection given constraints in C and expected values in targets
+#' Compute the I-projection given the coefficient matrix \code{C} and expected values in \code{targets}
 #'
 #' @param C a matrix with D constraints in the rows for |E| entities in the columns, must be of full row rank
 #' @param targets a matrix/vector of with D rows/entries with the expected values for the constraints in C
@@ -9,7 +9,15 @@
 #' @param maxIter the maximal number of iterations, defaults to 10 000
 #'
 #' @returns a list with following entries
+#' \tabular{ll}{
+#'  \code{p} \tab the I-projection of the reference distribution v onto the
+#'    TOTEMplex defined by C \cr
+#'  \code{converged} \tab a logical indicating convergence (\code{TRUE}) or
+#'    failure (\code{FALSE}) \cr
+#'  \code{info} \tab information about the convergence
+#'  }
 #'
+
 #' @export
 iProjector <- function(C, targets, v = NULL, tolerance = .Machine$double.eps, maxIter = 10000L){
 

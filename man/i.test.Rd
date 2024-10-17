@@ -28,6 +28,33 @@ the bias}
 to the sample marginal (fix = TRUE) or not (fix = FALSE). Additionally also
 the value of the predictor marginal can be given}
 }
+\value{
+A list with class "\code{htest}" containing the following components:
+\tabular{ll}{
+ \code{statistic} \tab the value of the I-test statistic\cr
+ \code{parameter} \tab the value of the I-divergence of distribution p from q\cr
+ \code{p.value} \tab the p-value for the test (a \code{NA} signals that the
+   hypothesis TOTEMplex was either empty or that there were redundant
+   conditions \cr
+ \code{estimate} \tab the estimated rate/mean (one-sample), difference in
+   in rates/means (two-sample), bias (relationship) \cr
+ \code{null.value} \tab the specified hypothesized value of the rate/mean,
+   difference in rates/means, bias depending on the test scenario \cr
+ \code{alternative} \tab a character string describing the alternative hypothesis \cr
+ \code{method} \tab a character string indicating what type of I-test was performed \cr
+ \code{data.name} \tab a character string giving the name(s) of the data. \cr
+ \code{sample.size} \tab the sampe size \cr
+ \code{pH} \tab the hypothesis distribution \cr
+ \code{pA} \tab the alternative distribution \cr
+ \code{entities} \tab the entity description
+}
+}
 \description{
-Performs a two way $I$-test.
+Performs a two way I-test.
+}
+\examples{
+data(bmrMass)
+## testing Kleiber's law
+i.test(BMR ~ I(Mass^(3/4)), data = bmrMass)
+
 }

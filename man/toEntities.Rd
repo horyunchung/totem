@@ -4,12 +4,17 @@
 \alias{toEntities}
 \title{toEntities}
 \usage{
-toEntities(data, select = NULL)
+toEntities(data, select = NULL, cartesian = FALSE)
 }
 \arguments{
-\item{data}{A data.frame to be converted}
+\item{data}{a data.frame to be converted}
 
-\item{select}{A vector of column names (attributes). Default is to take all columns.}
+\item{select}{a vector of column names (attributes). Default is to take all columns.}
+
+\item{cartesian}{a logical indicating whether the entities should comprise
+only the observed tupples of manifestations (\code{FALSE}, default) or
+the cartesian product (all possible combinations) of the attribute
+manifestations (\code{TRUE})}
 }
 \value{
 A data.frame with unique rows of the data table with selected columns with

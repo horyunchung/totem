@@ -6,6 +6,16 @@
 \usage{
 iDivergence(p, q = NULL)
 }
+\arguments{
+\item{p}{a numeric vector for the candidate distribution}
+
+\item{q}{a numeric vector for the reference distribution
+(if it is \code{NULL} the entropy is calculated)}
+}
+\value{
+the I-divergence
+}
 \description{
-iDivergence
+Computes the I-divergence (a.k.a. as Kullback-Leibler divergence) of distribution
+\code{p} from \code{q}
 }

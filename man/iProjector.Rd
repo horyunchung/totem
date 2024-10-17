@@ -25,7 +25,14 @@ iProjector(
 }
 \value{
 a list with following entries
+\tabular{ll}{
+ \code{p} \tab the I-projection of the reference distribution v onto the
+   TOTEMplex defined by C \cr
+ \code{converged} \tab a logical indicating convergence (\code{TRUE}) or
+   failure (\code{FALSE}) \cr
+ \code{info} \tab information about the convergence
+ }
 }
 \description{
-Compute the I-projection given constraints in C and expected values in targets
+Compute the I-projection given the coefficient matrix \code{C} and expected values in \code{targets}
 }

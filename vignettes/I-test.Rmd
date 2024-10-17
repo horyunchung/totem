@@ -1,14 +1,15 @@
 ---
 title: "The $I$-test"
-author:
-- name: Orestis Loukas
-  affiliation: Philipps-University Marburg, Germany
-- name: Ho-Ryun Chung
+author: 
+- name: "Orestis Loukas and Ho-Ryun Chung"
   affiliation: Philipps-University Marburg, Germany
   email: ho.chung@staff.uni-marburg.de
 package: totem
 output:
-  BiocStyle::html_document
+  rmarkdown::html_document:
+    highlight: pygments
+    toc: true
+    fig_width: 5
 abstract: |
   Statistical testing is a common procedure to demarcate "good" from "bad" theories. Here,    we provide a reference implementation for our totally empirical (TOTEM) statistics          framework. We implement the two-way $I$-test for testing group mean and rate differences    as well as arbitrary relationships between two metric variables. 
   
@@ -30,7 +31,11 @@ knitr::opts_chunk$set(
 if (! requireNamespace("devtools", quietly = TRUE))
   install.packages("devtools")
   
-devtools::install_github("horyunchung/totem", dependencies = TRUE, build_vignettes = TRUE, )
+devtools::install_github(
+  repo = "horyunchung/totem", 
+  dependencies = TRUE, 
+  build_vignettes = TRUE
+)
 ```
 
 # Using the $I$-test
@@ -197,7 +202,7 @@ or using the $I$-test in the observational setting:
 ```{r twoSample.i.test.MetricObservational}
 i.test(extra ~ group, data = sleep, fix = FALSE)
 ```
-In contrast to the $t$-test the $I$-test detects a significant difference! Moreover, the $t$-test cannot account for the different study designs, which in this example lead to only a small difference.
+In contrast to the $t$-test the $I$-test detects a significant difference! Moreover, the $t$-test cannot account for the different study designs. The $I$-test reveals that the difference in study desings leads only to a small difference.
 
 Actually the sleep data is paired, i.e. the study design is a cross-over study, where the same patient takes drug 1 and drug 2.
 
@@ -227,6 +232,7 @@ Here, the $I$-test does not report a result. This can be understood upon looking
 ```{r}
 with(sleep2, stripchart(extra.2 - extra.1), pch = 16)
 ```
+
 All differences are equal to or larger than zero. The only way to obtain the hypothesis distribution with a mean difference of zero is to put all weight to the participant with zero difference. The `NA` for the $p$-value usually signals that the hypothesis TOTEMplex $\mathcal{T}_\text{H}$ is empty, i.e. formally no $p$-value can be calculated. However, here the generic implementation of the $I$-test breaks, because the hypothesis condition that the mean difference is zero becomes redundant to the structural normalization condition. Thus, the hypothesis TOTEMplex $\mathcal{T}_\text{H}$ has only one member (the one that puts all weight to the patient with zero difference).  But from this hypothesis distribution, it is impossible to sample back datasets with an observed mean difference of $\mu = `r with(sleep2, mean(extra.2 - extra.1))`$. Thus, the empirical $p$-value is zero.
 
 ### Metric response against a metric attribute
@@ -273,7 +279,7 @@ Both $I$-tests reveal a $p$-value smaller than the 5% significance level, i.e. a
 We have implemented some standard testing scenarios. However, the $I$-test is much more versatile. 
 
 ### Equality of means for more than two groups
-For this example we use the `iris` dataset. Here, we want to know whether the attribute ``r (what = "Sepal.Length")`` differs between the three species of irs. The standard approach of the "old statistics" is the one-factorial ANOVA. The validity of the results of an one-factorial ANOVA depends on the validity of two assumptions:
+For this example we use the `iris` dataset. Here, we want to know whether the attribute `what = `r (what = "Sepal.Length")`` differs between the three species of irs. The standard approach of the "old statistics" is the one-factorial ANOVA. The validity of the results of an one-factorial ANOVA depends on the validity of two assumptions:
 
 1. **Normality**: The ``r what`` attribute should follow a normal distribution in each species.  
    We check this assumption by applying the Shapiro-Wilks test for normality for the ``r what`` attribute in each species
@@ -289,13 +295,16 @@ For this example we use the `iris` dataset. Here, we want to know whether the at
    ```
    Here, the null hypothesis that the variances are equal must be rejected.
 
-Formally speaking this invalidates the results of an one-factorial ANOVA, such that it should not be used. The one-factorial ANOVA gives following result
+Formally speaking this invalidates the results of an one-factorial ANOVA, such that it should not be used. 
+Nonetheless, the one-factorial ANOVA gives following result
 ```{r oneFactorialANOVA}
 summary(aov(as.formula(paste(what, "~ Species")), data = iris))
 ```
+It is unclear whether the low $p$-value originates from a violation of the null hypothesis and/or the unmet assumption of equal variances.
+
 The $I$-test does not require these assumptions. So we implement here (the application-dependent) $I$-test for this test scenario:
 
-1. Convert the data into the entity representation
+1. Convert the data into the entity representation using the function `toEntities`
    ```{r toEntities}
    entities <- toEntities(subset(iris, select = c(what, "Species")))
    ```

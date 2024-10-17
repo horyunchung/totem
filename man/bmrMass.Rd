@@ -11,12 +11,16 @@ A data.frame with 549 observations of 2 variables (BMR, and Mass)
 data(bmrMass)
 }
 \description{
-Data from Genoud et al. (2018) for the basic metabolic rate and body mass of
-549 mammals.
+Data from Genoud et al. (2018) for the basal metabolic rate and body mass of
+549 mammalian species.
 }
 \examples{
 data(bmrMass)
 ## testing Kleiber's law
 i.test(BMR ~ I(Mass^(3/4)), data = bmrMass)
+}
+\references{
+Genoud et al. (2018) Comparative analyses of basal rate of metabolism in
+mammals: data selection does matter. Biological Reviews 93 (1), 404–438.
 }
 \keyword{dataset}

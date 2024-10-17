@@ -17,4 +17,4 @@ RoxygenNote: 7.2.3
 Suggests: 
     knitr,
     rmarkdown
-VignetteBuilder: knitr, rmarkdown
+VignetteBuilder: knitr, rmarkdown, Barnard
