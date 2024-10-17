@@ -144,10 +144,10 @@ entities <- toEntities((convictions[, c("conviction", "twinType")]))
 marginalTwinType = with(entities, tapply(empirical, twinType, sum))
 marginalConviction = with(entities, tapply(empirical, conviction, sum))
 ## hypothesis distribution
-(pH <- with(
+(pH <- as.vector(with(
   entities, 
   marginalTwinType[twinType] * marginalConviction[conviction]
-))
+)))
 ```
 All we have to do is to calculate the $I$-divergence of the hypothesis distribution to the empirical distribution 
 ```{r}
@@ -160,6 +160,8 @@ pchisq(2 * attr(entities, "N") * idiv, df = 1, lower.tail = FALSE)
 
 Note that Fisher's exact test assumes that both the marginal probabilities for the twinType attribute as well as the conviction attribute are fixed (prespecifiable!). This is not the case. So let's assume that only the marginal probabilities for the twinType attribute had been fixed in advance ("experimental study design"). In this scenario we should use Barnard's test instead:
 ```{r}
+if (! requireNamespace("Barnard", quietly = TRUE))
+  install.packages("Barnard")
 library(Barnard)
 barnard.test(2,10,15,3)
 ```
